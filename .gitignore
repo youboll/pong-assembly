@@ -1,0 +1,7 @@
+# Compilados e arquivos temporários
+app
+asm.o
+raylib_pong_c
+raylib_pong.s
+out
+raylib_lib/
