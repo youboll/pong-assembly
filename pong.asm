@@ -33,7 +33,15 @@ section .data
     bola_delta_y dd 4.0
 
     ; Constantes de ponto flutuante (floats)
+    float_zero dd 0.0
     float_one_sec dd 1.0005
+    float_ten dd 10.0
+    float_four_hundred_thirty dd 430.0
+    float_thirty dd 30.0
+    float_fifty dd 50.0
+    float_seven_hundred_fifty dd 750.0
+    float_seven_hundred_seventy dd 770.0
+    float_minus_one dd -1.0
 
 section .text
 main:
@@ -134,6 +142,87 @@ main:
     movss xmm0, [bola_delta_y]
     mulss xmm0, [float_one_sec]
     movss [bola_delta_y], xmm0
+
+    ; 5. Colisão com as paredes superior e inferior
+    ; se bola_y < 10 ou bola_y > 430, invertemos a direção y
+    movss xmm0, [bola_y]
+    comiss xmm0, [float_ten]
+    jb .invert_dy
+    comiss xmm0, [float_four_hundred_thirty]
+    jbe .collision_left_paddle
+
+.invert_dy:
+    movss xmm0, [bola_delta_y]
+    mulss xmm0, [float_minus_one]
+    movss [bola_delta_y], xmm0
+
+.collision_left_paddle:
+    ; 6. Colisão com a Raquete Esquerda (x entre 30 e 50)
+    ; Só verifica se a bola estiver se movendo para a esquerda (bola_delta_x < 0)
+    movss xmm0, [bola_delta_x]
+    comiss xmm0, [float_zero]
+    jae .collision_right_paddle
+
+    ; Verifica limites de X da raquete
+    movss xmm1, [bola_x]
+    comiss xmm1, [float_thirty]
+    jb .collision_right_paddle
+    comiss xmm1, [float_fifty]
+    ja .collision_right_paddle
+
+    ; Converte a posição Y da raquete esquerda para float
+    pxor xmm2, xmm2
+    cvtsi2ss xmm2, [raquete_esq_y]
+    movss xmm0, [bola_y]
+    comiss xmm0, xmm2
+    jb .collision_right_paddle ; Ignora se a bola estiver acima da raquete
+
+    ; Raquete tem altura 100, verifica se a bola está abaixo da raquete
+    mov eax, [raquete_esq_y]
+    add eax, 100
+    pxor xmm2, xmm2
+    cvtsi2ss xmm2, eax
+    comiss xmm0, xmm2
+    ja .collision_right_paddle ; Ignora se a bola estiver abaixo da raquete
+
+    ; Colisão confirmada: invertemos bola_delta_x
+    movss xmm0, [bola_delta_x]
+    mulss xmm0, [float_minus_one]
+    movss [bola_delta_x], xmm0
+
+.collision_right_paddle:
+    ; 7. Colisão com a Raquete Direita (x entre 750 e 770)
+    ; Só verifica se a bola estiver se movendo para a direita (bola_delta_x > 0)
+    movss xmm0, [bola_delta_x]
+    comiss xmm0, [float_zero]
+    jbe .draw_frame
+
+    ; Verifica limites de X da raquete
+    movss xmm1, [bola_x]
+    comiss xmm1, [float_seven_hundred_fifty]
+    jb .draw_frame
+    comiss xmm1, [float_seven_hundred_seventy]
+    ja .draw_frame
+
+    ; Converte a posição Y da raquete direita para float
+    pxor xmm2, xmm2
+    cvtsi2ss xmm2, [raquete_dir_y]
+    movss xmm0, [bola_y]
+    comiss xmm0, xmm2
+    jb .draw_frame ; Ignora se a bola estiver acima da raquete
+
+    ; Raquete tem altura 100, verifica se a bola está abaixo da raquete
+    mov eax, [raquete_dir_y]
+    add eax, 100
+    pxor xmm2, xmm2
+    cvtsi2ss xmm2, eax
+    comiss xmm0, xmm2
+    ja .draw_frame ; Ignora se a bola estiver abaixo da raquete
+
+    ; Colisão confirmada: invertemos bola_delta_x
+    movss xmm0, [bola_delta_x]
+    mulss xmm0, [float_minus_one]
+    movss [bola_delta_x], xmm0
 
 .draw_frame:
     ; 9. Desenha a tela do jogo
