@@ -32,15 +32,22 @@ section .data
     bola_delta_x dd 5.0
     bola_delta_y dd 4.0
 
-    ; Constantes de ponto flutuante (floats)
+    ; Constantes de ponto flutuante (floats) para cálculos e comparações
     float_zero dd 0.0
     float_one_sec dd 1.0005
     float_ten dd 10.0
+    float_four_hundred dd 400.0
+    float_two_hundred_twenty_five dd 225.0
+    float_five dd 5.0
+    float_minus_five dd -5.0
+    float_four dd 4.0
+    float_minus_four dd -4.0
     float_four_hundred_thirty dd 430.0
     float_thirty dd 30.0
     float_fifty dd 50.0
     float_seven_hundred_fifty dd 750.0
     float_seven_hundred_seventy dd 770.0
+    float_eight_hundred dd 800.0
     float_minus_one dd -1.0
 
 section .text
@@ -195,21 +202,21 @@ main:
     ; Só verifica se a bola estiver se movendo para a direita (bola_delta_x > 0)
     movss xmm0, [bola_delta_x]
     comiss xmm0, [float_zero]
-    jbe .draw_frame
+    jbe .reset_ball_check
 
     ; Verifica limites de X da raquete
     movss xmm1, [bola_x]
     comiss xmm1, [float_seven_hundred_fifty]
-    jb .draw_frame
+    jb .reset_ball_check
     comiss xmm1, [float_seven_hundred_seventy]
-    ja .draw_frame
+    ja .reset_ball_check
 
     ; Converte a posição Y da raquete direita para float
     pxor xmm2, xmm2
     cvtsi2ss xmm2, [raquete_dir_y]
     movss xmm0, [bola_y]
     comiss xmm0, xmm2
-    jb .draw_frame ; Ignora se a bola estiver acima da raquete
+    jb .reset_ball_check ; Ignora se a bola estiver acima da raquete
 
     ; Raquete tem altura 100, verifica se a bola está abaixo da raquete
     mov eax, [raquete_dir_y]
@@ -217,12 +224,55 @@ main:
     pxor xmm2, xmm2
     cvtsi2ss xmm2, eax
     comiss xmm0, xmm2
-    ja .draw_frame ; Ignora se a bola estiver abaixo da raquete
+    ja .reset_ball_check ; Ignora se a bola estiver abaixo da raquete
 
     ; Colisão confirmada: invertemos bola_delta_x
     movss xmm0, [bola_delta_x]
     mulss xmm0, [float_minus_one]
     movss [bola_delta_x], xmm0
+
+.reset_ball_check:
+    ; 8. Reinicia a bola caso ela saia da tela pelas laterais (x < 0 ou x > 800)
+    movss xmm0, [bola_x]
+    comiss xmm0, [float_zero]
+    jb .reset_ball
+    comiss xmm0, [float_eight_hundred]
+    ja .reset_ball
+    jmp .draw_frame
+
+.reset_ball:
+    ; Reposiciona a bola no centro da tela
+    mov eax, [float_four_hundred]
+    mov [bola_x], eax
+    mov eax, [float_two_hundred_twenty_five]
+    mov [bola_y], eax
+
+    ; Reseta para a velocidade inicial invertendo a direção inicial do eixo X
+    ; se bola_delta_x > 0, novo dx = -5.0, senão dx = 5.0
+    movss xmm0, [bola_delta_x]
+    comiss xmm0, [float_zero]
+    ja .set_dx_negative
+    mov eax, [float_five]
+    mov [bola_delta_x], eax
+    jmp .set_dy
+
+.set_dx_negative:
+    mov eax, [float_minus_five]
+    mov [bola_delta_x], eax
+
+.set_dy:
+    ; Reseta a velocidade inicial invertendo a direção inicial do eixo Y
+    ; se bola_delta_y > 0, novo dy = -4.0, senão dy = 4.0
+    movss xmm0, [bola_delta_y]
+    comiss xmm0, [float_zero]
+    ja .set_dy_negative
+    mov eax, [float_four]
+    mov [bola_delta_y], eax
+    jmp .draw_frame
+
+.set_dy_negative:
+    mov eax, [float_minus_four]
+    mov [bola_delta_y], eax
 
 .draw_frame:
     ; 9. Desenha a tela do jogo
