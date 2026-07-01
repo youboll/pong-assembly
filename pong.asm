@@ -26,6 +26,15 @@ section .data
     raquete_dir_y dd 175
     raquete_esq_y dd 175
 
+    ; Bola (floats de precisão simples)
+    bola_x dd 400.0
+    bola_y dd 225.0
+    bola_delta_x dd 5.0
+    bola_delta_y dd 4.0
+
+    ; Constantes de ponto flutuante (floats)
+    float_one_sec dd 1.0005
+
 section .text
 main:
     sub rsp, 8 ; Para alinhar a stack em 16 bytes antes de chamadas de funções
@@ -94,17 +103,40 @@ main:
     mov rdi, KEY_DOWN
     call IsKeyDown
     cmp al, 1
-    jne .draw_frame
+    jne .update_ball
 
     ; Garante que a raquete não passe da parte inferior da tela
     mov eax, [raquete_dir_y]
     cmp eax, 340
-    jge .draw_frame
+    jge .update_ball
     add eax, 6
     mov [raquete_dir_y], eax
 
+.update_ball:
+    ; 3. Atualiza a posição física da bola usando floats
+    ; bola_x = bola_x + bola_delta_x
+    movss xmm0, [bola_x]
+    addss xmm0, [bola_delta_x]
+    movss [bola_x], xmm0
+
+    ; bola_y = bola_y + bola_delta_y
+    movss xmm0, [bola_y]
+    addss xmm0, [bola_delta_y]
+    movss [bola_y], xmm0
+
+    ; 4. Acelera suavemente a bola multiplicando a cada frame (1.0005)
+    ; bola_delta_x = bola_delta_x * 1.0005
+    movss xmm0, [bola_delta_x]
+    mulss xmm0, [float_one_sec]
+    movss [bola_delta_x], xmm0
+
+    ; bola_delta_y = bola_delta_y * 1.0005
+    movss xmm0, [bola_delta_y]
+    mulss xmm0, [float_one_sec]
+    movss [bola_delta_y], xmm0
+
 .draw_frame:
-    ; Desenha a tela do jogo
+    ; 9. Desenha a tela do jogo
     call BeginDrawing
 
     ; Limpa o fundo com a cor preta (BLACK: 0xFF000000)
@@ -124,6 +156,16 @@ main:
     mov esi, [raquete_dir_y]
     mov edx, 20
     mov ecx, 100
+    mov r8d, 0xFFFFFFFF
+    call DrawRectangle
+
+    ; Desenha a bola converting float to int truncando
+    movss xmm0, [bola_x]
+    cvttss2si edi, xmm0
+    movss xmm0, [bola_y]
+    cvttss2si esi, xmm0
+    mov edx, 15
+    mov ecx, 15
     mov r8d, 0xFFFFFFFF
     call DrawRectangle
 
